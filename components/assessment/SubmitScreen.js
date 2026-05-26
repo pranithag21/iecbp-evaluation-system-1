@@ -6,44 +6,150 @@ import { isGarbageInput } from "../../utils/validation";
 
 
 // ── Mirrors AssessmentShell validation ──
+// REPLACE the current validateAnswer with this
 function validateAnswer(question, answer) {
-  if (!answer) {
+  if (!isAnswered(answer)) {
     return `Q${question.number}: Answer is required`;
   }
 
+  // SHORT TEXT VALIDATION
   if (question.type === 'short_text') {
-    const cleaned = String(answer).trim();
+    const text = String(answer).trim().toLowerCase();
 
-    if (!cleaned) {
+    if (!text) {
       return `Q${question.number}: Answer is required`;
     }
 
-    const words = cleaned.split(/\s+/).filter(Boolean);
+    const words = text.split(/\s+/).filter(Boolean);
 
-    if (words.length < 10) {
-      return `Q${question.number}: Minimum 10 meaningful words required`;
+    if (words.length < 15) {
+      return `Q${question.number}: Minimum 15 words required.`;
     }
 
-    const repeatedPattern = /^(\b\w+\b)(\s+\1)+$/i;
-    if (repeatedPattern.test(cleaned)) {
-      return `Q${question.number}: Repeated words are not allowed`;
+    if (words.length > 40) {
+      return `Q${question.number}: Maximum 40 words allowed.`;
     }
 
-    const garbagePattern = /^(asdf|qwerty|zxcv|aaaa|1111|1234|test)+$/i;
-    if (garbagePattern.test(cleaned.replace(/\s/g, ''))) {
-      return `Q${question.number}: Meaningful answer required`;
+    // repeated word spam
+    const uniqueWords = new Set(words);
+    const repetitionRatio = uniqueWords.size / words.length;
+
+    if (repetitionRatio < 0.65) {
+      return `Q${question.number}: Answer is too repetitive. Please provide a meaningful response.`;
+    }
+
+    // spam/chat words
+    const spamWords = [
+      'hey',
+      'hi',
+      'hii',
+      'hehe',
+      'haha',
+      'lol',
+      'test',
+      'asdf',
+      'qwerty',
+      'check',
+      'checking',
+      'error',
+      'hello'
+    ];
+
+    const spamCount = words.filter(word =>
+      spamWords.some(spam => word.includes(spam))
+    ).length;
+
+    if (spamCount >= 3) {
+      return `Q${question.number}: Casual or spam-like responses are not allowed.`;
+    }
+
+    if (isGarbageInput(text)) {
+      return `Q${question.number}: Please enter a meaningful answer.`;
+    }
+    // MULTI SELECT VALIDATION
+    // MULTI SELECT VALIDATION
+    // MULTI SELECT VALIDATION
+    if (question.type === 'multi_select') {
+      if (!Array.isArray(answer)) {
+        return `Q${question.number}: Please select required options.`;
+      }
+
+      const requiredSelections = question.maxSelections || 1;
+
+      if (answer.length < requiredSelections) {
+        return `Q${question.number}: Please select exactly ${requiredSelections} options.`;
+      }
+
+      if (answer.length > requiredSelections) {
+        return `Q${question.number}: You can select only ${requiredSelections} options.`;
+      }
     }
   }
 
+  // YES/NO REASON VALIDATION
+  if (question.type === 'yes_no') {
+    const reasoning = String(answer.reasoning || '').trim().toLowerCase();
+    const words = reasoning.split(/\s+/).filter(Boolean);
+
+    if (words.length < 15) {
+      return `Q${question.number}: Minimum 15 words required for reasoning.`;
+    }
+
+    if (words.length > 40) {
+      return `Q${question.number}: Maximum 40 words allowed for reasoning.`;
+    }
+
+    const uniqueWords = new Set(words);
+    const repetitionRatio = uniqueWords.size / words.length;
+
+    if (repetitionRatio < 0.65) {
+      return `Q${question.number}: Reasoning is too repetitive.`;
+    }
+
+    const spamWords = [
+      'hey',
+      'hi',
+      'hii',
+      'hehe',
+      'haha',
+      'lol',
+      'test',
+      'asdf',
+      'check',
+      'error'
+    ];
+
+    const spamCount = words.filter(word =>
+      spamWords.some(spam => word.includes(spam))
+    ).length;
+
+    if (spamCount >= 3) {
+      return `Q${question.number}: Meaningful reasoning required.`;
+    }
+  }
+
+  // MULTI SELECT VALIDATION
+  if (question.type === 'multi_select') {
+    if (!Array.isArray(answer)) {
+      return `Q${question.number}: Please select required options.`;
+    }
+
+    const minRequired = question.minSelections || 1;
+
+    if (answer.length < minRequired) {
+      return `Q${question.number}: Select at least ${minRequired} options.`;
+    }
+  }
+
+  // AUDIO / VIDEO
   if (question.type === 'audio' || question.type === 'video') {
-    if (!answer || String(answer).trim() === '') {
+    if (!answer?.response || String(answer.response).trim() === '') {
       return `Q${question.number}: Response required`;
     }
   }
 
   return null;
 }
-
 function revalidateAll(questions, answers) {
   const errors = [];
   const normalizedAnswers = {};
@@ -76,7 +182,6 @@ function revalidateAll(questions, answers) {
 
   return errors;
 }
-
 function isAnswered(answer) {
   if (answer === undefined || answer === null) return false;
   if (typeof answer === 'string') return answer.trim().length > 0;
@@ -173,7 +278,6 @@ export default function SubmitScreen({ meta, questions, answers, onRestart, onBa
   const handleSubmit = async () => {
     // ── Re-validate all answers before touching the API ──
     const errors = revalidateAll(questions, answers);
-    alert(errors.length === 0 ? '✅ All valid — proceeding' : ❌ Blocked: \n${ errors.join('\n') });
     if (errors.length > 0) {
       setValidationErrors(errors);
       setSubmitting(false);

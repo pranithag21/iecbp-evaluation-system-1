@@ -13,19 +13,12 @@ export default function Scenario6Assessment() {
 
   useEffect(() => {
     const startExamAttempt = async () => {
-      try {
-        const response = await fetch('/api/assessment/start', {
-          method: 'POST',
-        });
+      const res = await fetch('/api/assessment/start', {
+        method: 'POST'
+      });
 
-        const data = await response.json();
-
-        if (data.attemptId) {
-          setAttemptId(data.attemptId);
-        }
-      } catch (error) {
-        console.error('Failed to start attempt', error);
-      }
+      const data = await res.json();
+      setAttemptId(data.attemptId);
     };
 
     startExamAttempt();
@@ -118,7 +111,6 @@ export default function Scenario6Assessment() {
                 answers={answers}
                 onAnswer={handleAnswer}
                 onFinish={handleFinish}
-                attemptId={attemptId}
               />
             </motion.div>
           ) : (

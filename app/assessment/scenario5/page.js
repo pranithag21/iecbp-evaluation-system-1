@@ -13,19 +13,19 @@ export default function Scenario5Assessment() {
 
   useEffect(() => {
     const startExamAttempt = async () => {
+      const res = await fetch('/api/assessment/start', {
+        method: 'POST'
+      });
+
+      let data = null;
+
       try {
-        const response = await fetch('/api/assessment/start', {
-          method: 'POST',
-        });
-
-        const data = await response.json();
-
-        if (data.attemptId) {
-          setAttemptId(data.attemptId);
-        }
-      } catch (error) {
-        console.error('Failed to start attempt', error);
+        data = await response.json();
+      } catch (err) {
+        console.error("Invalid JSON response from /start API");
+        return;
       }
+      setAttemptId(data.attemptId);
     };
 
     startExamAttempt();
@@ -117,7 +117,6 @@ export default function Scenario5Assessment() {
                 answers={answers}
                 onAnswer={handleAnswer}
                 onFinish={handleFinish}
-                attemptId={attemptId}
               />
             </motion.div>
           ) : (
