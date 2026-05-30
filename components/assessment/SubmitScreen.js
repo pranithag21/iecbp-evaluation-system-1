@@ -276,89 +276,156 @@ export default function SubmitScreen({ meta, questions, answers, onRestart, onBa
   const [validationErrors, setValidationErrors] = useState([]);
 
   const handleSubmit = async () => {
-    // ── Re-validate all answers before touching the API ──
-    const errors = revalidateAll(questions, answers);
-    if (errors.length > 0) {
-      setValidationErrors(errors);
+    
+
+  // ── Revalidate answers ──
+  const errors = revalidateAll(questions, answers);
+
+  if (errors.length > 0) {
+    setValidationErrors(errors);
+    setSubmitting(false);
+    return;
+  }
+
+  setValidationErrors([]);
+
+  setSubmitting(true);
+  setSubmitError('');
+
+  try {
+
+    // STEP 1 — assessment timing validation
+    const res = await fetch('/api/assessment/submit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        attemptId
+      }),
+    });
+
+    const data = await res.json();
+
+    // Too fast warning
+    if (data.tooFast) {
+      setShowFastSubmitWarning(true);
       setSubmitting(false);
       return;
     }
-    setValidationErrors([]);
+
+    if (!res.ok) {
+      setSubmitError(
+        data.message || 'Submission blocked'
+      );
+
+      setSubmitting(false);
+      return;
+    }
+
+    // STEP 2 — Save answers + run evaluation
+    const saveRes = await fetch('/api/submissions', {
+      method: 'POST',
+
+      headers: {
+        'Content-Type': 'application/json',
+      },
+
+      body: JSON.stringify({
+        scenarioId: meta.id,
+        answers,
+        attemptId
+      }),
+    });
+
+    const saveData = await saveRes.json();
+
+    console.log("SUBMISSION RESPONSE:", saveData);
+
+    if (!saveRes.ok || !saveData.success) {
+
+      setSubmitError(
+        saveData.message || 'Failed to save answers'
+      );
+
+      setSubmitting(false);
+      return;
+    }
+
+    // STEP 3 — redirect to results page
+    window.location.href =
+      `/results?submissionId=${saveData.submissionId}`;
+
+  } catch (err) {
+
+    console.log(err);
+
+    setSubmitError(
+      'Unexpected error during submission'
+    );
+
+  } finally {
+
+    setSubmitting(false);
+  }
+};
+
+
+const handleForceSubmit = async () => {
+  
+
+  try {
 
     setSubmitting(true);
-    setSubmitError('');
 
-    try {
-      const res = await fetch('/api/assessment/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ attemptId }),
-      });
+    // STEP 1 — Save answers + evaluation
+    const saveRes = await fetch('/api/submissions', {
+      method: 'POST',
 
-      const data = await res.json();
+      headers: {
+        'Content-Type': 'application/json',
+      },
 
-      if (data.tooFast) {
-        setShowFastSubmitWarning(true);
-        setSubmitting(false);
-        return;
-      }
+      body: JSON.stringify({
+        scenarioId: meta.id,
+        answers,
+        attemptId
+      }),
+    });
 
-      if (!res.ok) {
-        setSubmitError(data.message || 'Submission blocked');
-        setSubmitting(false);
-        return;
-      }
+    const saveData = await saveRes.json();
 
-      const saveRes = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scenarioId: meta.id, answers, attemptId }),
-      });
+    console.log("FORCE SUBMIT RESPONSE:", saveData);
 
-      if (!saveRes.ok) {
-        setSubmitError('Failed to save answers');
-        setSubmitting(false);
-        return;
-      }
+    if (!saveRes.ok || !saveData.success) {
 
-      setPhase('success');
-    } catch (err) {
-      setSubmitError('Unexpected error during submission');
-    } finally {
+      setSubmitError(
+        saveData.message || 'Failed to save answers'
+      );
+
       setSubmitting(false);
+      return;
     }
-  };
-  const handleForceSubmit = async () => {
-    try {
-      setSubmitting(true);
 
-      const saveRes = await fetch('/api/submissions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          scenarioId: meta.id,
-          answers,
-          attemptId
-        }),
-      });
+    setShowFastSubmitWarning(false);
 
-      if (!saveRes.ok) {
-        setSubmitError('Failed to save answers');
-        setSubmitting(false);
-        return;
-      }
+    // STEP 2 — redirect to results page
+    window.location.href =
+      `/results?submissionId=${saveData.submissionId}`;
 
-      setShowFastSubmitWarning(false);
-      setPhase('success');
+  } catch (err) {
 
-    } catch (err) {
-      setSubmitError('Unexpected error during submission');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    console.log(err);
+
+    setSubmitError(
+      'Unexpected error during submission'
+    );
+
+  } finally {
+
+    setSubmitting(false);
+  }
+};
   return (
     <div style={{ minHeight: '100vh' }}>
       {/* Navbar */}

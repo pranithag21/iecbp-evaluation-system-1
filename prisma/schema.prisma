@@ -37,3 +37,27 @@ model ExamAttempt {
 
   status String @default("started")
 }
+model EvaluationResult {
+
+  id Int @id @default(autoincrement())
+
+  submissionId Int
+
+  scenarioId Int
+
+  overallScore Float
+
+  understanding Float
+
+  awareness Float
+
+  decision Float
+
+  clarity Float
+
+  feedback Json
+
+  evaluatedQuestions Json
+
+  createdAt DateTime @default(now())
+}

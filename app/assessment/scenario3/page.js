@@ -36,6 +36,7 @@ export default function Scenario3Assessment() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+           attemptId,
           scenarioId: scenario3Meta.id,
           answers,
         }),

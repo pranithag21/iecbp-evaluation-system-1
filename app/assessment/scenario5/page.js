@@ -12,24 +12,53 @@ export default function Scenario5Assessment() {
   const [attemptId, setAttemptId] = useState(null);
 
   useEffect(() => {
-    const startExamAttempt = async () => {
-      const res = await fetch('/api/assessment/start', {
-        method: 'POST'
-      });
 
-      let data = null;
+  async function startExamAttempt() {
 
-      try {
-        data = await response.json();
-      } catch (err) {
-        console.error("Invalid JSON response from /start API");
-        return;
+    try {
+
+      const response = await fetch(
+        '/api/assessment/start',
+        {
+          method: 'POST',
+
+          headers: {
+            'Content-Type': 'application/json',
+          },
+
+          body: JSON.stringify({
+            scenarioId: 5
+          }),
+        }
+      );
+
+      const text = await response.text();
+
+      console.log("RAW START API RESPONSE:", text);
+
+      const data = JSON.parse(text);
+
+      if (data.success) {
+        setAttemptId(data.attemptId);
+
+        console.log(
+          "ATTEMPT ID:",
+          data.attemptId
+        );
       }
-      setAttemptId(data.attemptId);
-    };
 
-    startExamAttempt();
-  }, []);
+    } catch (err) {
+
+      console.error(
+        "START API ERROR:",
+        err
+      );
+    }
+  }
+
+  startExamAttempt();
+
+}, []);
 
   const handleAnswer = (questionId, value) => {
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -43,6 +72,7 @@ export default function Scenario5Assessment() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+           attemptId,
           scenarioId: scenario5Meta.id,
           answers,
         }),
